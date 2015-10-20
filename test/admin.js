@@ -7,7 +7,9 @@ describe('admin role (array syntax)', function () {
     relations.users.addRole('admin', ['do stuff']);
   });
 
-  after((next) => relations.tearDown().then(next));
+  after(next => {
+    relations.tearDown().then(result =>next());
+  });
 
   it('is carlos an admin', function (done) {
     relations.users('is %s an %s of %s?', ['carlos', 'admin', 'whoville'])
@@ -62,7 +64,9 @@ describe('admin role (object syntax)', function () {
     relations.users.addRole('admin', ['do stuff']);
   });
 
-  after(relations.tearDown);
+  after(next => {
+    relations.tearDown().then(result =>next());
+  });
 
   it('is carlos an admin', function (done) {
     relations.users('is :user a :role of :object?', {user: 'carlos', role: 'admin', object: 'whoville'})
@@ -117,7 +121,9 @@ describe('admin role (literal syntax)', function () {
     relations.users.addRole('admin', ['do stuff']);
   });
 
-  after(relations.tearDown);
+  after(next => {
+    relations.tearDown().then(result =>next());
+  });
 
   it('is carlos an admin', function (done) {
     relations.users('is carlos an admin of whoville')
