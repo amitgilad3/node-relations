@@ -93,7 +93,7 @@ Verb question
 To ask if a user can perform an action:
 
 ```js
-relations.repos('Can %s pull?', 'Brian', function (err, can) {
+relations.repos('Can %s pull?', 'Brian').then(can => {
   // can = true (based on "watcher" role)
 });
 ```
@@ -101,7 +101,7 @@ relations.repos('Can %s pull?', 'Brian', function (err, can) {
 We can also check if an action can be performed on a specific object:
 
 ```js
-relations.repos('Can %s push to buffet?', 'Brian', function (err, can) {
+relations.repos('Can %s push to buffet?', 'Brian').then(can => {
   // can = false (Brian doesn't have "owner" or "collaborator" roles)
 });
 ```
@@ -120,7 +120,7 @@ Role question
 To check if a user has a role:
 
 ```js
-relations.repos('Is %s a collaborator of %s?', 'Brian', 'buffet', function (err, is) {
+relations.repos('Is %s a collaborator of %s?', 'Brian', 'buffet').then(is => {
   // is = false
 });
 ```
@@ -128,7 +128,7 @@ relations.repos('Is %s a collaborator of %s?', 'Brian', 'buffet', function (err,
 We can also leave the object out to check for a global role:
 
 ```js
-relations.repos('Is %s a %s?', 'Brian', 'watcher', function (err, is) {
+relations.repos('Is %s a %s?', 'Brian', 'watcher').then(is => {
   // is = true
 });
 ```
@@ -148,7 +148,7 @@ In addition to true/false checks, **relations** can return an array of objects
 which match certain criteria. For example:
 
 ```js
-relations.repos('What can %s pull from?', 'Carlos', function (err, repos) {
+relations.repos('What can %s pull from?', 'Carlos').then(repos => {
   // repos = ['buffet']
 });
 ```
@@ -167,7 +167,7 @@ Role request
 Also, we can ask for an array of objects a user has a role for:
 
 ```js
-relations.repos('What is %s the owner of?', 'Carlos', function (err, repos) {
+relations.repos('What is %s the owner of?', 'Carlos').then(repos => {
   // repos = ['buffet']
 });
 ```
@@ -186,7 +186,7 @@ Verb subject request
 To request an array of subjects who can perform an action on an object:
 
 ```js
-relations.repos('Who can pull from %s?', 'buffet', function (err, users) {
+relations.repos('Who can pull from %s?', 'buffet').then(users => {
   // users = ['Carlos']
 });
 ```
@@ -203,7 +203,7 @@ Role subject request
 To request an array of subjects who have a role for an object:
 
 ```js
-relations.repos('Who is the owner of %s?', 'buffet', function (err, users) {
+relations.repos('Who is the owner of %s?', 'buffet').then(users => {
   // users = ['Carlos']
 });
 ```
@@ -220,7 +220,7 @@ Object verb request
 To request an array of verbs a subject can perform on an object:
 
 ```js
-relations.repos('What actions can %s do with %s?', 'Carlos', 'buffet', function (err, verbs) {
+relations.repos('What actions can %s do with %s?', 'Carlos', 'buffet').then(verbs => {
   // verbs = ['pull', 'push', 'administrate']
 });
 ```
@@ -237,7 +237,7 @@ Object-Role map request
 To get a map of object->role pairs for a subject:
 
 ```js
-relations.repos('Describe what %s can do', 'Carlos', function (err, map) {
+relations.repos('Describe what %s can do', 'Carlos').then(map => {
   // map = { '': [ 'watcher' ],
              'buffet': [ 'owner' ] }
 });
@@ -255,14 +255,14 @@ Subject-Role map request
 To get a map of subject->role pairs, optionally pertaining to an object:
 
 ```js
-relations.repos('Get who can act', function (err, map) {
+relations.repos('Get who can act').then(map => {
   // map = { 'carlos': [ 'watcher' ],
              'brian': [ 'watcher' ] }
 });
 ```
 
 ```js
-relations.repos('Explain who can act on %s', 'buffet', function (err, map) {
+relations.repos('Explain who can act on %s', 'buffet').then(map => {
   // map = { 'carlos': [ 'owner' ] }
 });
 ```
