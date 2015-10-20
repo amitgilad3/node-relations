@@ -1,5 +1,5 @@
 describe('memory store', function () {
-  doBasicTest();
+  doBasicTest('memory');
 });
 
 describe('mysql store', function () {

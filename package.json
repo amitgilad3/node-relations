@@ -4,8 +4,9 @@
   "description": "entity relationship, role, and permissions API for Node.js",
   "main": "index.js",
   "dependencies": {
-    "eventflow": "0.0.6",
-    "async": "~0.1.22"
+    "async": "~0.1.22",
+    "bluebird": "^2.10.2",
+    "eventflow": "0.0.6"
   },
   "devDependencies": {
     "idgen": "^2.0.2",
