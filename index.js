@@ -1,98 +1,24 @@
-var relations = module.exports = require('eventflow')()
+var relations = module.exports = { }
+  , Promise = require('bluebird')
   , parser = require('./parser')
   , Context = require('./context')
+  , currentQueue = new (require('./queue'))()
 
 relations.define = function (name, structure) {
   var ctx = new Context(name, structure);
 
-  relations[name] = function () {
-    var args = [].slice.call(arguments);
-    var str = args.shift();
-    var str, named, unnamed, fn, raised = false;
-    do {
-      var arg = args.shift();
-      if (Array.isArray(arg)) {
-        unnamed = arg;
-      }
-      else if (typeof arg === 'object') {
-        named = arg;
-      }
-      else if (typeof arg === 'string' || typeof arg === 'number') {
-        if (typeof arg === 'string' && !str) {
-          str = arg;
-          continue;
-        }
-        unnamed || (unnamed = []);
-        unnamed.push(arg);
-      }
-      else if (typeof arg === 'function') {
-        fn = arg;
-      }
-    } while (args.length);
+  relations[name] = function (expression) {
+    var args    = [].slice.call(arguments, 1);
+    var command = null;
 
-    function raiseErr (err) {
-      if (raised) return;
-      raised = true;
-      if (typeof err === 'string') err = new Error(err);
-      if (fn) return fn(err);
-      throw err;
-    }
-
-    if (!str) {
-      return raiseErr('must pass a string to parse');
-    }
-    try {
-      var cmd = parser.parse(str);
-    }
-    catch (e) {
-      return raiseErr(e.message);
-    }
-
-    cmd.fn = function (err, value) {
-      if (err) return raiseErr(err);
-      if (fn) fn(null, value);
-    };
-
-    if (named && unnamed) {
-      return cmd.fn('cannot mix named and unnamed tokens');
-    }
-
-    ['subject', 'role', 'verb', 'object'].forEach(function (k) {
-      if (cmd[k]) {
-        if (cmd[k].name) {
-          if (typeof named[cmd[k].name] === 'undefined') {
-            return cmd.fn('no data for named token :' + cmd[k].name);
-          }
-          cmd[k] = named[cmd[k].name];
-        }
-        else if (cmd[k].type) {
-          if (typeof unnamed[cmd[k].index] === 'undefined') {
-            return cmd.fn('no data for unnamed token (index: ' + cmd[k].index + ')');
-          }
-          cmd[k] = unnamed[cmd[k].index];
-          if (cmd[k].type === 'number') {
-            cmd[k] = parseFloat(cmd[k]);
-          }
-        }
-        else if (cmd[k].value) {
-          cmd[k] = cmd[k].value;
-        }
-        else {
-          return cmd.fn('weird error parsing "' + str + '"');
-        }
-        if (k === 'role' && !ctx.roles[cmd.role]) {
-          return cmd.fn('role not defined: "' + cmd.role + '"');
-        }
-        else if (k === 'verb' && !ctx.verbs[cmd.verb]) {
-          return cmd.fn('verb not defined: "' + cmd.verb + '"');
-        }
-      }
-    });
-
-    if (raised) return;
-
-    cmd.ctx = ctx;
-    queue(cmd);
+    return Promise.resolve(expression)
+      .then(expression => parseExpression(expression, ctx))
+      .then(result     => {
+        command = result;
+        return parseArguments(args);
+      })
+      .then(args   => fillReplacements(args, expression, ctx, command))
+      .then(result => currentQueue.push(executeCommand(command)))
   };
 
   ['addRole', 'updateRole', 'removeRole', 'getRoles'].forEach(function (method) {
@@ -107,44 +33,105 @@ relations.stores = {
 };
 
 relations.use = function (store, options) {
-  relations._ready = false;
+  Promise.promisifyAll(store);
   relations.store = store;
-  store.invoke('init', options || {}, function (err) {
-    if (err) throw err;
-    relations._ready = true;
-  });
+
+  store.invokeAsync('init', options || {}).then(() => currentQueue.run());
 };
 
-relations.tearDown = function (cb) {
-  if (relations.store.listeners('reset').length) {
-    relations.store.invoke('reset', cb);
+relations.tearDown = function () {
+  var oldStore = relations.store;
+
+  relations.store = null;
+  currentQueue.reset();
+
+  if (oldStore.listeners('reset').length) {
+    return oldStore.invokeAsync('reset');
   }
-  else cb();
+
+  return Promise.resolve();
 };
 
-relations._queue = [];
+function parseExpression (expression, context) {
+    if (!expression) {
+      throw Error('must pass a string to parse');
+    }
 
-function queue (fn) {
-  if (!relations._queue.length) doQueue();
-  relations._queue.push(fn);
+    var command = parser.parse(expression);
+    command.ctx = context;
+
+    return command;
 }
 
-function doQueue () {
-  function _doQueue () {
-    if (!relations.store) {
-      relations.use(relations.stores.memory);
+function parseArguments (args) {
+  var unnamed, named;
+
+  do {
+    var arg = args.shift();
+    if (Array.isArray(arg)) {
+      unnamed = arg;
     }
-    if (relations._ready && relations._queue.length) {
-      var cmd = relations._queue.shift();
-      relations.store.invoke(cmd.type, cmd, cmd.fn);
+    else if (typeof arg === 'object') {
+      named = arg;
     }
-    if (relations._queue.length) doQueue();
+    else if (typeof arg === 'string' || typeof arg === 'number') {
+      unnamed || (unnamed = []);
+      unnamed.push(arg);
+    }
+  } while (args.length);
+
+  if (named && unnamed) {
+    throw new Error('cannot mix named and unnamed tokens');
   }
 
-  if (typeof setImmediate !== 'undefined') {
-    setImmediate(_doQueue);
+  return {
+    named:   named,
+    unnamed: unnamed
+  };
+}
+
+function fillReplacements (args, expression, context, cmd) {
+  ['subject', 'role', 'verb', 'object'].forEach(function (k) {
+    if (cmd[k]) {
+      if (cmd[k].name) {
+        if (typeof args.named[cmd[k].name] === 'undefined') {
+          throw new Error('no data for named token :' + cmd[k].name);
+        }
+        cmd[k] = args.named[cmd[k].name];
+      }
+      else if (cmd[k].type) {
+        if (typeof args.unnamed[cmd[k].index] === 'undefined') {
+          throw new Error('no data for unnamed token (index: ' + cmd[k].index + ')');
+        }
+        cmd[k] = args.unnamed[cmd[k].index];
+        if (cmd[k].type === 'number') {
+          cmd[k] = parseFloat(cmd[k]);
+        }
+      }
+      else if (cmd[k].value) {
+        cmd[k] = cmd[k].value;
+      }
+      else {
+        throw new Error('weird error parsing "' + expression + '"');
+      }
+
+      if (k === 'role' && !context.roles[cmd.role]) {
+        throw new Error('role not defined: "' + cmd.role + '"');
+      }
+      else
+      if (k === 'verb' && !context.verbs[cmd.verb]) {
+        throw new Error('verb not defined: "' + cmd.verb + '"');
+      }
+    }
+  });
+}
+
+function executeCommand (command) {
+  if (!relations.store) {
+    throw new Error('You should set a store first!');
   }
-  else {
-    process.nextTick(_doQueue);
-  }
+
+  return () => {
+    return relations.store.invokeAsync(command.type, command);
+  };
 }
