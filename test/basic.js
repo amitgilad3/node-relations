@@ -14,5 +14,5 @@ describe('redis store', function () {
 
 describe('mongodb store', function () {
   var MongoClient = require('mongodb').MongoClient;
-  doBasicTest('mongodb', { client: MongoClient.connect('mongodb://localhost:27017/relations-test') });
+  doBasicTest('mongodb', { client: MongoClient.connect('mongodb://travis:test@localhost:27017/relations_test') });
 });
