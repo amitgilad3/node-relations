@@ -333,6 +333,21 @@ var relations = require('relations')
 relations.use(relations.stores.mysql, {client: mysql.createConnection({user: 'root', database: 'test'})});
 ```
 
+### MongoDB store
+
+To use the MongoDB store, your app must create a
+[node-mongodb-native](https://github.com/mongodb/node-mongodb-native) client or client promise and pass it like so:
+
+```js
+var relations   = require('relations')
+  , MongoClient = require('mongodb').MongoClient
+
+relations.use(relations.stores.mongodb, {
+  client: MongoClient.connect('mongodb://localhost:27017/database-name'),
+  collection: 'collection-name' // the property is optional, default value: `relations`
+});
+```
+
 ### Make your own store
 
 A **relations** store is simply a node module that exports an event emitter
