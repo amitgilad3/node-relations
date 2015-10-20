@@ -37,7 +37,9 @@ describe('save to datafile', function () {
     relations.repos('%s is a watcher', sagar);
   });
 
-  after((next) => relations.tearDown().then(next));
+  after(next => {
+    relations.tearDown().then(result =>next());
+  });
 
   it('can brian administrate views', function (done) {
     relations.repos('can :user administrate :repo?', {user: brian, repo: views})
@@ -141,7 +143,7 @@ describe('save to datafile', function () {
   it('who can pull from views?', function (done) {
     relations.repos('who can pull from %s?', views)
       .then(list => {
-        assert.deepEqual(list.sort(), [carlos, brian]);
+        assert.deepEqual(list.sort(), [carlos, brian].sort());
         done();
       })
       .catch(done);
@@ -313,7 +315,9 @@ describe('load from datafile', function () {
     relations.repos('%s is a collaborator of %s', carlos, views);
   });
 
-  after(next => relations.tearDown().then(next));
+  after(next => {
+    relations.tearDown().then(result =>next());
+  });
 
   it('can brian administrate views', function (done) {
     relations.repos('can :user administrate :repo?', {user: brian, repo: views})
@@ -417,7 +421,7 @@ describe('load from datafile', function () {
   it('who can pull from views?', function (done) {
     relations.repos('who can pull from %s?', views)
       .then(list => {
-        assert.deepEqual(list.sort(), [carlos, brian]);
+        assert.deepEqual(list.sort(), [carlos, brian].sort());
         done();
       })
       .catch(done);

@@ -38,7 +38,9 @@ doBasicTest = function (store, options) {
     relations.repos('%s is a watcher', sagar);
   });
 
-  after(next => relations.tearDown().then(next));
+  after(next => {
+    relations.tearDown().then(result =>next());
+  });
 
   it('can brian administrate views', function (done) {
     relations.repos('can :user administrate :repo?', {user: brian, repo: views})
@@ -142,7 +144,7 @@ doBasicTest = function (store, options) {
   it('who can pull from views?', function (done) {
     relations.repos('who can pull from %s?', views)
       .then(list => {
-        assert.deepEqual(list, [carlos, brian]);
+        assert.deepEqual(list.sort(), [carlos, brian].sort());
         done();
       })
       .catch(done);
@@ -184,7 +186,7 @@ doBasicTest = function (store, options) {
   it('what can carlos absquatulate?', function (done) {
     relations.repos('what can %s absquatulate?', carlos)
       .then(list => {
-        assert.deepEqual(list [buffet]);
+        assert.deepEqual(list, [buffet]);
         done();
       })
       .catch(done);
@@ -201,7 +203,7 @@ doBasicTest = function (store, options) {
 
   it('add scientist', function (done) {
     relations.repos.addRole('scientist', ['test']);
-    relations.repos('%s is a scientist', sagar).then(done);
+    relations.repos('%s is a scientist', sagar).then(result => done());
   });
 
   it('can sagar test views?', function (done) {
@@ -292,10 +294,10 @@ doBasicTest = function (store, options) {
   it('get who can act', function (done) {
     relations.repos('detail who can act')
       .then(map => {
-        assert.deepEqual(map, {
+        assert.deepEqual(sortedMap(map), {
           'carlos8f': [ 'watcher' ],
           'cpsubrian': [ 'watcher' ],
-          'astrosag_ngc4414': [ 'watcher', 'scientist' ]
+          'astrosag_ngc4414': [ 'scientist', 'watcher' ]
         });
         done();
       })
