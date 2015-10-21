@@ -56,6 +56,31 @@ relations.repos('Carlos is the owner of buffet.');
 
 This assigns the role `owner` to the subject `Carlos` for the object `buffet`.
 
+### Default roles
+
+<span style="color:red">WARNING: default roles are impelemnted only for MongoDB store!</span>
+
+```js
+var relations = require('relations');
+
+relations.define('repos', {
+  owner: ['pull', 'push', 'administrate'],
+  collaborator: ['pull', 'push'],
+  default: ['pull']
+});
+
+relations.repos('Carlos is an owner of buffet');
+
+relations.repos('Can %s pull from buffet?', 'Carlos').then(can => { /* can === true */ });
+relations.repos('Can %s push to buffet?',   'Carlos').then(can => { /* can === true */ });
+
+relations.repos('Can %s pull from buffet?', 'Brian').then(can => { /* can === true  */ });
+relations.repos('Can %s push to buffet?',   'Brian').then(can => { /* can === false */ });
+```
+
+This will work because **Brian** has no roles on **buffet** so it will use the **default** role.
+
+
 ### Token replacements
 
 Note that the API has multiple syntaxes, and this is functionally equivalent:

@@ -31,6 +31,10 @@ store.on('init', function (options, cb) {
 });
 
 store.on('declaration', function (cmd, cb) {
+  if (cmd.role === 'default') {
+    cb(new Error('You can assign "default" role!'));
+  }
+
   var record = {
     'context': cmd.ctx.name,
     'subject': cmd.subject,
@@ -66,10 +70,21 @@ store.on('verb-question', function (cmd, cb) {
     'object':  { $in: [ '', cmd.object ] }
   };
 
-  collection
-    .findOne(query)
-    .then(result => cb(null, !!result))
-    .catch(error => cb(error));
+  var hasAnyRolesOnTheSubjectQuery = {
+    'context': cmd.ctx.name,
+    'subject': cmd.subject,
+    'object':  cmd.object
+  };
+
+  Promise.props({
+    answer: collection.findOne(query).then(result => !!result),
+    exists: collection.count(hasAnyRolesOnTheSubjectQuery).then(count => count > 0)
+  })
+  .then(result => {
+    var isAllowedByDefaultRole = !result.exists && cmd.ctx.verbs[cmd.verb].indexOf('default') !== -1;
+    cb(null, result.answer || isAllowedByDefaultRole);
+  })
+  .catch(error => cb(error));
 });
 
 store.on('role-question', function (cmd, cb) {
@@ -158,6 +173,10 @@ store.on('object-verb-request', function (cmd, cb) {
     .catch(error => cb(error));
 
     function transformResponse(result) {
+      if (!result.length) {
+        return cmd.ctx.roles['default'] || [];
+      }
+
       return result.reduce((verbs, record) => verbs.concat(cmd.ctx.roles[record.role] || [ ]), [ ]);
     }
 });
