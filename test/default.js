@@ -27,6 +27,15 @@ describe('default role (only for mongodb)', function () {
       .catch(done);
   });
 
+  it('can den read page?', function (done) {
+    relations.users('can den read :page?', { page: 'main page' })
+      .then(answer => {
+        assert(!answer);
+        done();
+      })
+      .catch(done);
+  });
+
   it('can anh edit own page?', function (done) {
     relations.users('can anh edit :page?', { page: 'main page' })
       .then(answer => {

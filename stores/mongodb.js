@@ -73,7 +73,7 @@ store.on('verb-question', function (cmd, cb) {
   var hasAnyRolesOnTheSubjectQuery = {
     'context': cmd.ctx.name,
     'subject': cmd.subject,
-    'object':  cmd.object
+    'object':  { $in: [ '', cmd.object ] }
   };
 
   Promise.props({
