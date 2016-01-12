@@ -16,6 +16,10 @@ store.on('init', function (options, cb) {
   else cb();
 });
 
+store.on('reset', function () {
+  contexts = store._contexts = {};
+});
+
 function initSubject (cmd) {
   contexts[cmd.ctx.name] || (contexts[cmd.ctx.name] = {});
   return contexts[cmd.ctx.name][cmd.subject] || (contexts[cmd.ctx.name][cmd.subject] = {
