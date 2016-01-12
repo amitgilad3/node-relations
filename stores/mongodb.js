@@ -1,5 +1,6 @@
 var store   = module.exports = require('eventflow')()
-  , Promise = require('bluebird');
+  , Promise = require('bluebird')
+  , _       = require('lodash');
 
 var client, collection;
 
@@ -63,10 +64,17 @@ store.on('revocation', function (cmd, cb) {
 });
 
 store.on('verb-question', function (cmd, cb) {
-  var query = {
+  var normalQuery = {
     'context': cmd.ctx.name,
     'subject': cmd.subject,
     'role':    { $in: cmd.ctx.verbs[cmd.verb] },
+    'object':  { $in: [ '', cmd.object ] }
+  };
+
+  var restrictedQuery = {
+    'context': cmd.ctx.name,
+    'subject': cmd.subject,
+    'role':    { $in: cmd.ctx.verbs['!' + cmd.verb] || [] },
     'object':  { $in: [ '', cmd.object ] }
   };
 
@@ -77,12 +85,13 @@ store.on('verb-question', function (cmd, cb) {
   };
 
   Promise.props({
-    answer: collection.findOne(query).then(result => !!result),
-    exists: collection.count(hasAnyRolesOnTheSubjectQuery).then(count => count > 0)
+    answer:     collection.findOne(normalQuery).then(result => !!result),
+    exists:     collection.count(hasAnyRolesOnTheSubjectQuery).then(count => count > 0),
+    restricted: collection.findOne(restrictedQuery).then(result => !!result)
   })
   .then(result => {
     var isAllowedByDefaultRole = !result.exists && cmd.ctx.verbs[cmd.verb].indexOf('default') !== -1;
-    cb(null, result.answer || isAllowedByDefaultRole);
+    cb(null, !result.restricted && (result.answer || isAllowedByDefaultRole));
   })
   .catch(error => cb(error));
 });
@@ -102,18 +111,26 @@ store.on('role-question', function (cmd, cb) {
 });
 
 store.on('verb-request', function (cmd, cb) {
-  var query = {
+  var allowedQuery = {
     'context': cmd.ctx.name,
     'subject': cmd.subject,
     'role':    { $in: cmd.ctx.verbs[cmd.verb] },
     'object':  { $ne: '' }
   };
 
-  collection
-    .find(query)
-    .toArray()
-    .then(result => cb(null, result.map(record => record.object)))
-    .catch(error => cb(error));
+  var restrictedQuery = {
+    'context': cmd.ctx.name,
+    'subject': cmd.subject,
+    'role':    { $in: cmd.ctx.verbs['!' + cmd.verb] || [] },
+    'object':  { $ne: '' }
+  };
+
+  Promise.props({
+    allowed:    Promise.map(collection.find(allowedQuery).toArray(),    record => record.object),
+    restricted: Promise.map(collection.find(restrictedQuery).toArray(), record => record.object)
+  })
+  .then(result => cb(null, _.chain(result.allowed).difference(result.restricted).uniq().value()))
+  .catch(error => cb(error));
 });
 
 store.on('role-request', function (cmd, cb) {
@@ -132,17 +149,24 @@ store.on('role-request', function (cmd, cb) {
 });
 
 store.on('verb-subject-request', function (cmd, cb) {
-  var query = {
+  var allowedQuery = {
     'context': cmd.ctx.name,
     'role':    { $in: cmd.ctx.verbs[cmd.verb] },
     'object':  cmd.object
   };
 
-  collection
-    .find(query)
-    .toArray()
-    .then(result => cb(null, result.map(record => record.subject)))
-    .catch(error => cb(error));
+  var restrictedQuery = {
+    'context': cmd.ctx.name,
+    'role':    { $in: cmd.ctx.verbs['!' + cmd.verb] || [] },
+    'object':  cmd.object
+  };
+
+  Promise.props({
+    allowed:    Promise.map(collection.find(allowedQuery).toArray(),    record => record.subject),
+    restricted: Promise.map(collection.find(restrictedQuery).toArray(), record => record.subject)
+  })
+  .then(result => cb(null, _.chain(result.allowed).difference(result.restricted).uniq().value()))
+  .catch(error => cb(error));
 });
 
 store.on('role-subject-request', function (cmd, cb) {
@@ -169,16 +193,25 @@ store.on('object-verb-request', function (cmd, cb) {
   collection
     .find(query)
     .toArray()
-    .then(result => cb(null, transformResponse(result)))
+    .then(transformResponse)
+    .then(removeRestrictedPermissions)
+    .then(result => cb(null, result))
     .catch(error => cb(error));
 
-    function transformResponse(result) {
-      if (!result.length) {
-        return cmd.ctx.roles['default'] || [];
-      }
-
-      return result.reduce((verbs, record) => verbs.concat(cmd.ctx.roles[record.role] || [ ]), [ ]);
+  function transformResponse(result) {
+    if (!result.length) {
+      return cmd.ctx.roles['default'] || [];
     }
+
+    return result.reduce((verbs, record) => verbs.concat(cmd.ctx.roles[record.role] || [ ]), [ ]);
+  }
+
+  function removeRestrictedPermissions(result) {
+    var normal     = result.filter(permission => permission[0] !== '!');
+    var restricted = result.filter(permission => permission[0] === '!').map(permission => permission.substr(1));
+
+    return _.chain(normal).difference(restricted).uniq().value();
+  }
 });
 
 store.on('object-role-map-request', function (cmd, cb) {

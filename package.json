@@ -6,7 +6,8 @@
   "dependencies": {
     "async": "~0.1.22",
     "bluebird": "^2.10.2",
-    "eventflow": "0.0.6"
+    "eventflow": "0.0.6",
+    "lodash": "^3.10.1"
   },
   "devDependencies": {
     "idgen": "^2.0.2",

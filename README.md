@@ -80,6 +80,27 @@ relations.repos('Can %s push to buffet?',   'Brian').then(can => { /* can === fa
 
 This will work because **Brian** has no roles on **buffet** so it will use the **default** role.
 
+### Restricting roles
+
+<span style="color:red">WARNING: restricting roles are implemented only for MongoDB store!</span>
+
+```js
+var relations = require('relations');
+
+relations.define('repos', {
+  owner:  ['pull', 'push', 'administrate'],
+  banned: ['!push', '!administrate'],
+});
+
+relations.repos('Carlos is an owner of buffet');
+relations.repos('Carlos is banned from buffet');
+
+relations.repos('Can %s pull from buffet?',    'Carlos').then(can => { /* can === true */  });
+relations.repos('Can %s push to buffet?',      'Carlos').then(can => { /* can === false */ });
+relations.repos('Can %s administrate buffet?', 'Carlos').then(can => { /* can === false */ });
+```
+
+Actions with **!** will restrict same normal actions (even if the actions are allowed within another role)
 
 ### Token replacements
 
