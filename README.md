@@ -82,7 +82,7 @@ This will work because **Brian** has no roles on **buffet** so it will use the *
 
 ### Restricting roles
 
-<span style="color:red">WARNING: default roles are implemented only for MongoDB store!</span>
+<span style="color:red">WARNING: restricting roles are implemented only for MongoDB store!</span>
 
 ```js
 var relations = require('relations');
