@@ -91,7 +91,7 @@ store.on('verb-question', function (cmd, cb) {
   })
   .then(result => {
     var isAllowedByDefaultRole = !result.exists && cmd.ctx.verbs[cmd.verb].indexOf('default') !== -1;
-    cb(null, !result.restricted && (result.answer || isAllowedByDefaultRole));
+    cb(null, { can: !result.restricted && (result.answer || isAllowedByDefaultRole), isAllowedByDefaultRole });
   })
   .catch(error => cb(error));
 });
